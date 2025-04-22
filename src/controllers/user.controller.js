@@ -6,6 +6,24 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 
+const generateAccessTokenAndRefreshTokens = async (userId) =>{
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken ()
+
+        //then we need to save refreshtoken to db coz of not asking user for password everytime
+        user.refreshToken = refreshToken       //this is how we store in db   
+        await user.save({validateBeforeSave: false})
+
+        return {accessToken , refreshToken}
+
+    } catch (error) {
+        throw new ApiError(500,"somthing wend wrong while generate access and refresh tokens")
+    }
+}
+
+
 const registerUser = asyncHandler( async (req , res ) =>{
     
 // get user details from frontend
@@ -18,21 +36,24 @@ const registerUser = asyncHandler( async (req , res ) =>{
 // check for user creation 
 // return response
 
-    const {username , fillname , password , email} = req.body
-    console.log( "email=" , email);
+    const {username , fullname , password , email } = req.body
+    console.log( "email" , email);
     
     // if (fullname ==="") {
     //     throw new ApiError(400 , "fullname is required" )
     // }
 
     //this if  proved that the any feild is empty then show error
-    if ([fullname , username , email ,password].some((field)=>field?.trim()==="")) {
+    if (
+        [fullname , username , email ,password].some
+        ((field) => field?.trim() === "")
+    ){
         throw new ApiError(400 , "All fields is required" )
     }
-     
+    
     //below this code tell us that find the user that  match this email or username
     //this $or is a operetor
-    const existedUser =  User.findOne({
+    const existedUser = await User.findOne({
         $or :[{email},{username}]
     })
 
@@ -40,12 +61,15 @@ const registerUser = asyncHandler( async (req , res ) =>{
         throw new ApiError(409,"user already exists")
     }
     // console.log(res.files);
-    const avatarLocalPath = res.files?.avatar[0]?.path;
-    const coverimageLocalPath = res.files?.coverimage[0]?.path;
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
+    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+
+    // console.log("REQ.BODY =", req.body);
+    // console.log("REQ.FILES =", req.files);
 
     //this if check in the multer , avatarlocalPath is there or not
     if (!avatarLocalPath) {
-        throw new ApiError(400, "avatar is required")
+        throw new ApiError(400, "locally avatar is required")
     }
 
     //below the code for upload file from multer to cloudinary 
@@ -62,7 +86,7 @@ const registerUser = asyncHandler( async (req , res ) =>{
     const user = await User.create({
         fullname,
         avatar: avatar.url,
-        coverimage: coverImage?.url || "",    //this means if the coverimg url available so get it or show empty
+        coverImage: coverImage?.url || "",    //this means if the coverimg url available so get it or show empty
         email,
         password,
         username: username.toLowerCase()
@@ -82,4 +106,89 @@ const registerUser = asyncHandler( async (req , res ) =>{
     )
 })
 
-export default registerUser;
+const loginUser = asyncHandler (async(req ,res ) =>{
+    //req-body -> Data
+    //username or email 
+    //find the user
+    // password check
+    // generate access and refresh token
+    // send this tokens in cookies
+
+    const {username , password , email} = req.body
+
+    if (!username || !email) {
+        throw new ApiError(400 , "username or email is required")
+    }
+
+    const user = await User.findById({
+        $or:[{username},{email}]
+    })
+
+    if (!user) {
+        throw new ApiError(401 , "user does not exist")
+    }
+
+    //User = this user is from db user
+    //user = created by me
+    const ispasswordvalied = await user.isPasswordCorrect(password)
+
+    if (!ispasswordvalied) {
+        throw new ApiError(400,"password is incorrect")
+    }
+
+    const {accessToken,refreshToken } = await generateAccessTokenAndRefreshTokens(user._id)
+
+    const loggedIn = await User.findById(user._id).select("-password -refreshToken")
+
+    //below we send cookie
+
+    const option = {
+        httpOnly:true,     //by this modified only backend or server
+        secure :true
+    }
+    return res
+    .status(201)
+    .cookie("accessToken" ,accessToken ,options)
+    .cookie("refreshToken",refreshToken , options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user:loggedIn , accessToken,refreshToken
+            },
+            "user logged in successfully"
+        )
+    )
+})
+
+const logoutUser = asyncHandler(async (req,res) =>{
+
+    await User.findByIdAndUpdate(
+        //step1= how to find user
+        //step 2 = what you want to update
+        req.user._id,
+        {
+            $set:{
+                refreshToken :undefined
+            }
+        },
+        {
+            new: true
+        }
+    )
+    const option = {
+        httpOnly:true,     //by httponly and secure data true ,data is modified from backend or server
+        secure :true
+    }
+    return res
+    .status(200)
+    .clearCookie("accessToken" ,options)
+    .clearCookie("refreshToken",options)
+    .json(new ApiResponse(200,{},"user logged out successfully"))
+})
+
+export {
+    registerUser, 
+    loginUser,
+    logoutUser
+} ;

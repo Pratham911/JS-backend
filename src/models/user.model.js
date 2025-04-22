@@ -1,6 +1,7 @@
 
 import mongoose ,{Schema} from "mongoose";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken"
 
 const userSchema = new Schema(
     {
@@ -28,7 +29,7 @@ const userSchema = new Schema(
             type: String,  //cloudnary url service
             require:true, 
         } ,
-        coverimage   :{
+        coverImage   :{
             type: String,  //cloudnary url service
             require:true, 
         } ,
@@ -72,6 +73,17 @@ userSchema.methods.generateAccessToken =function() {
         process.env.ACCESS_TOKEN_SECRET,
         {
             expiresIn : process.env.ACCESS_TOKEN_EXPIRY
+        }
+    )
+}
+userSchema.methods.generateRefreshToken =function() {
+    return jwt.sign(
+        {
+           _id : this._id
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn : process.env.REFRESH_TOKEN_EXPIRY
         }
     )
 }

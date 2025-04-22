@@ -1,7 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import express, { urlencoded } from "express";
-
+import express , {urlencoded}from "express";
+// instead of importing controller directly
 
 const app = express()
 
@@ -18,11 +18,10 @@ app.use(cookieParser())
 
 
 //routes
-import userRouter from "./controllers/user.controller.js"
-
+import router from "./routes/user.routes.js"
 
 //routes decleration 
-app.use("/api/v1/users" , userRouter)   //this code going to routes file in. user
+app.use("/api/v1/users" , router)   //this code going to routes file in. user
 
 
 export default app;

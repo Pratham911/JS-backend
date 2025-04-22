@@ -1,20 +1,21 @@
+
 import { Router } from "express";
-import registerUser from "../controllers/user.controller.js";
+import {loginUser, logoutUser, registerUser} from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middlewares.js"
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router()
 
-router.route("/Register").post(upload.fields([
-    {
-        name:"avatar",
-        maxCount :1
-    },
-    {
-        name :"coverImage",
-        maxCount: 1
-    }
-])  ,registerUser)
+router.route("/register").post(upload.fields([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'coverImage', maxCount: 1 }
+  ])
+   ,registerUser)
 
-// this upload is a middleware it's use before the registerUser
+router.route("/login").post(loginUser)
+
+router.route("/logout").post(verifyJWT ,logoutUser)
+
+// this upload is a middleware it's use before the register
 
 export default router;
