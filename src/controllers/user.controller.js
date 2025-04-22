@@ -120,9 +120,10 @@ const loginUser = asyncHandler (async(req ,res ) =>{
         throw new ApiError(400 , "username or email is required")
     }
 
-    const user = await User.findById({
+    const user = await User.findOne({
         $or:[{username},{email}]
     })
+    
 
     if (!user) {
         throw new ApiError(401 , "user does not exist")
@@ -142,7 +143,7 @@ const loginUser = asyncHandler (async(req ,res ) =>{
 
     //below we send cookie
 
-    const option = {
+    const options = {
         httpOnly:true,     //by this modified only backend or server
         secure :true
     }
@@ -176,7 +177,7 @@ const logoutUser = asyncHandler(async (req,res) =>{
             new: true
         }
     )
-    const option = {
+    const options = {
         httpOnly:true,     //by httponly and secure data true ,data is modified from backend or server
         secure :true
     }
@@ -186,7 +187,7 @@ const logoutUser = asyncHandler(async (req,res) =>{
     .clearCookie("refreshToken",options)
     .json(new ApiResponse(200,{},"user logged out successfully"))
 })
-
+ 
 export {
     registerUser, 
     loginUser,
