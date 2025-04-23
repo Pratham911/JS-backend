@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import {loginUser, logoutUser, registerUser} from "../controllers/user.controller.js";
+import {loginUser, logoutUser, refreshAccessToken, registerUser} from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middlewares.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -15,6 +15,8 @@ router.route("/register").post(upload.fields([
 router.route("/login").post(loginUser)
 
 router.route("/logout").post(verifyJWT ,logoutUser)
+
+router.route("/refresh-token").post(refreshAccessToken)
 
 // this upload is a middleware it's use before the register
 
